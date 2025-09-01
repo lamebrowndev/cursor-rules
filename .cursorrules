@@ -1,0 +1,305 @@
+# .cursorrules
+# Purpose: Make the AI behave like a Staff+ engineer for this codebase:
+# plans first, ships safe changes, writes tests, and maintains docs.
+
+###############################################################################
+# 0) PROJECT PROFILE (edit to match your repo)
+###############################################################################
+Tech Stack:
+- Web: Next.js (App Router), React 18, TypeScript (strict)
+- Mobile: Expo + React Native (TypeScript)
+- Styling: Tailwind CSS (web), NativeWind (mobile)
+- State: Zustand for local module state; TanStack Query for server cache
+- Forms: React Hook Form + Zod resolver
+- Validation: Zod (`z.infer` for static types)
+- HTTP: Axios (web & mobile), centralized client with interceptors
+- Backend: Next.js Route Handlers / server actions; Supabase (Postgres + RLS)
+- Auth: Supabase Auth (JWT) or NextAuth (credentials/OAuth)
+- Queue/Jobs (if present): Inngest or equivalent
+- Package manager: yarn
+- Node: v20.x (LTS)
+- Lint/Format: ESLint + Prettier
+- Tests: Vitest or Jest; React Testing Library; Playwright/Detox optional E2E
+- CI: GitHub Actions (build, lint, test, typecheck)
+
+Repo Conventions:
+- Folders use **kebab-case** (e.g., components/auth-wizard)
+- **Named exports** for components & utils (avoid default exports)
+- Prefer **interfaces** over type aliases when extending; avoid `enum` → use unions/maps
+- Path aliases via `@/*` or `src/*` in tsconfig
+- File order: exported component/function → subcomponents → helpers → static → types
+- No secrets in code; use env vars; keep `.env.example` authoritative
+
+###############################################################################
+# 1) OPERATING PRINCIPLES
+###############################################################################
+- Be explicit. For any non-trivial change, produce a **short plan** (goals, files, types, risks).
+- Ship small, safe steps. Prefer multiple tiny PRs over one massive diff.
+- Match the house style; if deviating, explain briefly and codify in lint rules/ADRs.
+- Tests + docs are mandatory for features and bugfixes.
+- Schema-first development: define Zod schemas at boundaries, generate/derive types.
+- Never hardcode secrets or guess configuration; update `.env.example` with comments.
+- Update README/ADR/CHANGELOG when public behavior or APIs change.
+
+###############################################################################
+# 2) TASK EXECUTION PROTOCOL (the 5-step loop)
+###############################################################################
+When asked to implement/modify something, respond in this structure:
+
+1) PLAN
+   - Intent (1–3 bullets); acceptance criteria
+   - Files to add/edit/delete (with paths)
+   - Data contracts: Zod schemas, types, API surface
+   - Risks, edge cases, and rollback idea
+
+2) IMPLEMENT
+   - Provide **minimal per-file patches** (ready to paste)
+   - Keep functions small & pure; separate IO from logic
+   - Follow repo conventions and accessibility guidelines
+
+3) TEST
+   - Add/adjust **unit/integration tests** (happy, edge, failure)
+   - Show test names and what they assert
+
+4) VERIFY
+   - Commands: `yarn typecheck`, `yarn lint`, `yarn test`, `yarn build`
+   - Known risks, performance notes, and manual QA steps
+
+5) DOCUMENT
+   - Update relevant sections in README/ADRs
+   - Update `.env.example` with any new vars and comments
+   - Provide a **Conventional Commit** message
+
+**Output Format for Patches (use this consistently):**
+- Start each file with: `FILE: path/to/file.ext`
+- Then a fenced block of the file or diff:
+- For removals, state `DELETE FILE: path/to/file.ext`.
+
+###############################################################################
+# 3) CODE STYLE & QUALITY
+###############################################################################
+TypeScript:
+- `"strict": true`; no implicit `any`; avoid `// @ts-ignore` (justify if unavoidable)
+- Narrow early; prefer discriminated unions; never let `any/unknown` cross boundaries
+- Use `z.infer<typeof Schema>` for runtime-validated types
+- Avoid `enum`; use union literals (`type Role = "admin" | "user"`) and lookup maps
+
+React (Web):
+- Functional components only; keep components focused; co-locate small subcomponents
+- Minimize `useEffect`; push side-effects to data layer; avoid prop drilling
+- Accessibility: semantic HTML, labeled inputs, keyboard navigability
+- Avoid `dangerouslySetInnerHTML` unless sanitized and justified
+
+React Native (Expo):
+- Keep business logic in pure modules; keep component tests light
+- Use accessibility roles/labels; avoid layout thrash; offload heavy work off UI thread
+- Prefer platform-safe APIs; gate permissions; handle offline/low-memory states
+
+Styling:
+- Tailwind/NativeWind; extract UI primitives when class lists bloat
+- Centralize design tokens; avoid magic numbers; respect dark mode (if present)
+
+APIs & Data:
+- Zod at trust boundaries (API/webhooks/forms)
+- Central `api` client with interceptors (auth header, error normalization)
+- Prefer idempotent APIs and clear error shapes `{ code, message, details? }`
+- For Supabase: use RLS; never ship service keys to clients; keep server-only in `server/*`
+
+Error Handling & Logging:
+- Never swallow errors; normalize throwables
+- Log server-side with request/user context (PII-safe); no secrets in logs
+
+Security & Privacy:
+- Validate all inputs; sanitize outputs; consistent CSP/headers where applicable
+- Rate-limit sensitive routes; CSRF where relevant
+- Follow least-privilege for DB policies; migrations are reversible
+
+###############################################################################
+# 4) TESTING STANDARDS
+###############################################################################
+- Unit tests for logic; RTL for components; integration tests for data flows
+- Cover: happy path, edge cases, and failure modes
+- Snapshots only for stable, low-noise UI; avoid brittle assertions
+- E2E (optional): Playwright (web) / Detox (RN) for one critical flow
+- Name tests clearly: `should_create_user_when_input_is_valid`
+
+###############################################################################
+# 5) PERFORMANCE & DX
+###############################################################################
+- Measure before memoizing; prefer pure derivations/selectors
+- Avoid N+1 requests; batch where possible; server-select relations
+- Images: Next/Image (web); fast-image strategy on RN if needed
+- Keep CI fast: cache deps; run affected tests first when supported
+
+###############################################################################
+# 6) GIT, COMMITS & PRS
+###############################################################################
+Conventional Commits:
+- feat(scope): ...
+- fix(scope): ...
+- refactor(scope): ...
+- docs(scope): ...
+- test(scope): ...
+- chore(scope): ...
+
+PR checklist (include in PR body):
+- [ ] Single-purpose, small diff
+- [ ] Tests added/updated & passing
+- [ ] Types safe (no `any` leaks)
+- [ ] Security: inputs validated, no secrets
+- [ ] Docs/README/ADR updated if behavior changed
+- [ ] Migrations with rollback steps (if any)
+
+Branch naming:
+- feature/<ticket-or-topic>
+- fix/<bug-id>
+- chore/<task>
+
+###############################################################################
+# 7) FOLDER LAYOUT GUIDELINES
+###############################################################################
+Next.js (App Router):
+- app/*           # routes, server components
+- components/*    # reusable UI (named exports)
+- lib/*           # pure utils (no React)
+- server/*        # server-only modules (db, services)
+- hooks/*         # custom hooks (client-only)
+- styles/*, public/*
+- tests/*         # colocated or feature-based
+- types/*         # shared interfaces/types
+- docs/adr/*      # architecture decision records
+
+Expo (React Native):
+- src/app/* or app/*   # screens by feature
+- src/components/*     # UI primitives
+- src/hooks/*, src/store/* (Zustand slices)
+- src/lib/* (api clients, utils)
+- assets/*, tests/*
+
+###############################################################################
+# 8) DEFAULT TEMPLATES (use unless the repo has stronger patterns)
+###############################################################################
+Zod + API Route (Next.js):
+```ts
+// app/api/users/route.ts
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const CreateUser = z.object({
+  email: z.string().email(),
+  name: z.string().min(1),
+});
+export type CreateUserInput = z.infer<typeof CreateUser>;
+
+export async function POST(req: Request) {
+  const json = await req.json().catch(() => null);
+  const parsed = CreateUser.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  // TODO: persist via server-only module
+  return NextResponse.json({ ok: true }, { status: 201 });
+}
+// lib/api.ts
+import Axios from "axios";
+
+export const api = Axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  withCredentials: true,
+  headers: { "X-Client": "web" },
+});
+
+api.interceptors.request.use((cfg) => {
+  // attach auth token if available
+  return cfg;
+});
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    // normalize error to { code, message, details? }
+    throw err;
+  }
+);
+
+import { type ComponentPropsWithoutRef } from "react";
+
+export interface ButtonProps extends ComponentPropsWithoutRef<"button"> {
+  isLoading?: boolean;
+}
+
+export function Button({ isLoading, children, ...props }: ButtonProps) {
+  return (
+    <button disabled={isLoading || props.disabled} {...props}>
+      {isLoading ? "…" : children}
+    </button>
+  );
+}
+
+import { View, Text, Pressable } from "react-native";
+import { useState } from "react";
+
+export interface ScreenProps { title?: string }
+
+export function Screen({ title = "Title" }: ScreenProps) {
+  const [count, setCount] = useState(0);
+  return (
+    <View className="flex-1 items-center justify-center">
+      <Text accessibilityRole="header">{title}</Text>
+      <Pressable accessibilityRole="button" onPress={() => setCount(c => c + 1)}>
+        <Text>Count: {count}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+###############################################################################
+9) REVIEW CHECKLISTS (apply before finalizing)
+###############################################################################
+### Correctness
+- Types align with runtime; schemas enforce invariants  
+- Edge cases covered; IO separated from logic 
+
+### Security & Privacy
+- Inputs validated; outputs sanitized  
+- No secrets or tokens in client code/logs  
+- AuthZ enforced (RLS or explicit guards) 
+
+### Performance
+- No needless re-renders; heavy work off UI thread (RN)  
+- No chatty network patterns; batching/caching used 
+
+### Accessibility
+- Web: semantic roles, labels, keyboard nav  
+- RN: accessibility roles/labels; touch targets ≥ 44px  
+
+### Testing
+- New behavior has tests; avoids brittle snapshots  
+- Mocks are scoped; assertions focus on behavior
+
+### Docs & DX
+- README/ADRs updated; `.env.example` accurate  
+- Migrations documented with rollback steps 
+
+###############################################################################
+10) WHEN INFORMATION IS MISSING
+###############################################################################
+- Infer from existing patterns; prefer consistency  
+- If ambiguous and risky, propose 2–3 options with trade-offs and recommend one  
+- Leave clear TODOs with context if something must remain unimplemented  
+
+###############################################################################
+11) THINGS TO AVOID
+###############################################################################
+- Massive refactors bundled with features  
+- Introducing new dependencies without justification  
+- Global mutable state; leaking server secrets to client  
+- Overuse of `useEffect`; unnecessary providers/context  
+- Default exports; `any`; untyped JSON 
+
+###############################################################################
+12) OPTIONAL HOUSE TOOLS (USE IF PRESENT)
+###############################################################################
+- `yarn typecheck`, `yarn lint`, `yarn test`, `yarn build` must pass  
+- GitHub Actions CI: block merges on failures  
+- ADRs: `docs/adr/NNN-title.md` for notable decisions  
+- Coverage target ≥ **80%** for changed lines  
